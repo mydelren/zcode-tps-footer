@@ -10,7 +10,7 @@
   GET /healthz            → "ok"
   GET /turns?limit=500    → {"turns":[{turn_id,session_id,start_ms,end_ms,run_ms,ttft_ms,tps,out_tokens,models}]}（按 end_ms 降序）
 
-常驻：launchd LaunchAgent（com.hpf.tps-stats-server），127.0.0.1:3117，仅本机。
+常驻：launchd LaunchAgent（com.zcode-tps-footer.server），127.0.0.1:3117，仅本机。
 """
 from __future__ import annotations
 

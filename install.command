@@ -16,11 +16,11 @@ mkdir -p "$STAGE"
 cp "$HERE/inject.js" "$HERE/tps_stats_server.py" "$STAGE/"
 
 # 2) 数据服务（launchd 常驻，仅本机 127.0.0.1:3117）
-cat > "$HOME/Library/LaunchAgents/com.hpf.tps-stats-server.plist" << PLIST
+cat > "$HOME/Library/LaunchAgents/com.zcode-tps-footer.server.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>Label</key><string>com.hpf.tps-stats-server</string>
+<key>Label</key><string>com.zcode-tps-footer.server</string>
 <key>ProgramArguments</key><array>
 <string>/usr/bin/python3</string><string>$STAGE/tps_stats_server.py</string></array>
 <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
@@ -28,8 +28,8 @@ cat > "$HOME/Library/LaunchAgents/com.hpf.tps-stats-server.plist" << PLIST
 <key>StandardErrorPath</key><string>$STAGE/server.log</string>
 </dict></plist>
 PLIST
-launchctl bootout gui/$(id -u)/com.hpf.tps-stats-server 2>/dev/null || true
-launchctl bootstrap gui/$(id -u) "$HOME/Library/LaunchAgents/com.hpf.tps-stats-server.plist" 2>/dev/null || true
+launchctl bootout gui/$(id -u)/com.zcode-tps-footer.server 2>/dev/null || true
+launchctl bootstrap gui/$(id -u) "$HOME/Library/LaunchAgents/com.zcode-tps-footer.server.plist" 2>/dev/null || true
 sleep 1
 curl -s --max-time 2 http://127.0.0.1:3117/healthz | grep -q ok && echo "✅ 数据服务就绪" || echo "⚠️ 服务未响应（launchd 会自动重试）"
 
