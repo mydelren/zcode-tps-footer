@@ -41,16 +41,20 @@ Set-ItemProperty -Path $runKey -Name 'ZCodeTpsFooter' -Value ('"{0}" "{1}"' -f $
 function Test-Server {
     try { (Invoke-WebRequest -Uri 'http://127.0.0.1:3117/healthz' -TimeoutSec 2).Content } catch { $null }
 }
-if ((Test-Server) -ne 'ok') {
-    Start-Process -FilePath $pyw -ArgumentList ('"{0}"' -f (Join-Path $STAGE 'tps_stats_server.py')) -WindowStyle Hidden
-    Start-Sleep 2
-}
+# 拉新前先杀旧实例：Windows 允许多 socket 绑同一端口且后绑者劫持 accept，
+# 不清旧实例会堆僵尸（都显示 LISTENING 但 curl 空回复）
+Get-CimInstance Win32_Process -Filter "Name like 'python%'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -like '*tps_stats_server.py*' } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Start-Sleep 1
+Start-Process -FilePath $pyw -ArgumentList ('"{0}"' -f (Join-Path $STAGE 'tps_stats_server.py')) -WindowStyle Hidden
+Start-Sleep 2
 if ((Test-Server) -eq 'ok') { Write-Host '✅ 数据服务就绪 (127.0.0.1:3117, 开机自启)' }
 else { Write-Host '⚠️ 服务未响应（重启后由 Run 键自启；也可手动重跑本脚本）' }
 
 # ---------- 3) 已注入过？（ZCode 更新后 asar 被覆盖 → 标记消失 → 重打） ----------
 $peek = @('node', (Join-Path $STAGE 'asar-peek.mjs'), $ASAR, 'out/renderer/index.html')
-$cur = & node $peek[1] $peek[2] $peek[3] 2>$null
+$cur = (& node $peek[1] $peek[2] $peek[3] 2>$null) -join "`n"  # join: PowerShell 按行捕获外部输出成 Object[]，-is [string] 会恒 False
 if ($LASTEXITCODE -eq 0 -and $cur -is [string] -and $cur.Contains($MARK) -and -not $Force) {
     Write-Host '✅ 当前 asar 已含注入标记，无需重打。（升级注入请加 -Force）'
     Write-Host ''
@@ -92,7 +96,7 @@ npx -y @electron/asar pack unpacked app.asar.patched --unpack '{**/*.node,**/*.d
 if ($LASTEXITCODE -ne 0) { throw 'asar 重打包失败' }
 
 # 替换前验证补丁包里确实带标记，防白替换
-$chk = & node (Join-Path $STAGE 'asar-peek.mjs') (Join-Path $repack 'app.asar.patched') 'out/renderer/index.html' 2>$null
+$chk = (& node (Join-Path $STAGE 'asar-peek.mjs') (Join-Path $repack 'app.asar.patched') 'out/renderer/index.html' 2>$null) -join "`n"
 if ($LASTEXITCODE -ne 0 -or -not ($chk -is [string] -and $chk.Contains($MARK))) { throw '补丁包校验失败（未检出标记），已中止替换' }
 
 Write-Host '⑤ 替换 ...'

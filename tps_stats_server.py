@@ -139,9 +139,13 @@ class Handler(BaseHTTPRequestHandler):
                 pass
 
     def log_message(self, fmt: str, *args) -> None:
-        import sys
-        sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
-        sys.stderr.flush()
+        # pythonw 下 stderr 是虚拟流，写它可能异常并打断响应链（实测 curl 52 空回复），日志绝不影响主流程
+        try:
+            import sys
+            sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+            sys.stderr.flush()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
